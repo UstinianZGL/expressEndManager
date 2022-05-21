@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+ 
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Access-Control-Allow-Origin" content="*">
+    <title>Document</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+ 
+<body>
+ 
+    <button id="get">get
+ 
+    </button>
+    <button id="post">post
+ 
+    </button>
+    <script>
+ 
+        $(
+            function () {
+                $('#get').on('click', function () {
+                    console.log('点击了get');
+                    $.ajax({
+                        type: 'GET',
+                        xhrFields: {
+                          withCredentials: false
+                        },
+                        crossDomain: true,
+                        url: 'http://127.0.0.1:8082/api/getUserMsg',
+                        data: { name: 'sz', age: '28' },
+                        success: function (res) {
+                            console.log(res);
+                        },
+                        fail: function(err) {
+                          console.log('失败了');
+                          console.log(err)
+                        }
+                    })
+                })
+ 
+                // $('#post').on('click', function () {
+                //     $.ajax({
+                //         type: 'POST',
+                //         url: 'http://127.0.0.1:8082/api/use',
+                //         data: { name: 'post', age: '12' },
+                //         success: function (res) {
+                //             console.log(res);
+                //         }
+                //     })
+                // })
+            }
+        )
+    </script>
+</body>
+ 
+</html>
