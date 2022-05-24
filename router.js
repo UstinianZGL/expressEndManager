@@ -79,28 +79,94 @@ router1.get('/getAllLocationsMsg',(req,res) => {
 })
 
 //获取app/小程序所有的数据
-// req.query: {pageIndex:'1',pageSize:'8'}
+/* req.query: {
+    pageIndex:pageIndex,
+    pageSize:Number(query.pageSize),
+    dataType:dataType,
+    searchQuery:query
+  } 
+*/
 router1.get('/getAppData',(req,res) => {
-  
   const result = {totalSize:0};
   let pageIndex = Number(req.query.pageIndex),
       pageSize = Number(req.query.pageSize);
-  //获取搜索条件的所有结果
-  let sqlStr1 = "SELECT * FROM internetmanager.appmassage order by createDate desc";
-  conn.query(sqlStr1,(err,results) => {
-    result.totalSize = results.length;
-  })
-  let dataStart = (pageIndex - 1) * pageSize;
-  let sqlStr2 = "SELECT * FROM internetmanager.appmassage order by createDate desc limit " + dataStart + ',' + pageSize;
-  conn.query(sqlStr2,(err,results) => {
-    if (err) {
-      console.log(err);
-      res.json({code:1,msg:'获取数据失败'});
-    } else {
-      result.resultList = results
-      res.json({code:0,result:result});
+      dataType = Number(req.query.dataType);
+      searchQuery = JSON.parse(req.query.searchQuery);
+  if (dataType === 0) {   //获取搜索条件的所有结果
+    let sqlStr1 = "SELECT * FROM internetmanager.appmassage order by createDate desc";
+    conn.query(sqlStr1,(err,results) => {
+      result.totalSize = results.length;
+    })
+    let dataStart = (pageIndex - 1) * pageSize;
+    let sqlStr2 = "SELECT * FROM internetmanager.appmassage order by createDate desc limit " + dataStart + ',' + pageSize;
+    conn.query(sqlStr2,(err,results) => {
+      if (err) {
+        console.log(err);
+        res.json({code:1,msg:'获取数据失败'});
+      } else {
+        result.resultList = results
+        res.json({code:0,result:result});
+      }
+    })
+  } else {  //按照搜索条件进行搜索
+    let searchStr = ""
+    let searchArr = [];
+    if (searchQuery['corporateName'] !== "") {
+      let str = " corporateName=" + "'" + searchQuery['corporateName'] + "'";
+      searchArr.push(str);
     }
-  })
+    if (searchQuery['name'] !== "") {
+      let str = "name=" + "'" + searchQuery['name'] + "'";
+      searchArr.push(str);
+    }
+    if (searchQuery['sponsor'] !== "") {
+      let str = "sponsor=" + "'" + searchQuery['sponsor'] + "'";
+      searchArr.push(str);
+    }
+    if (searchQuery['level'] !== "") {
+      let str = "level=" + searchQuery['level'];
+      searchArr.push(str);
+    }
+    if (searchQuery['state'] !== "") {
+      let str = "state=" + searchQuery['state'];
+      searchArr.push(str);
+    }
+    if (searchQuery['type'] !== "") {
+      let str = "type=" + searchQuery['type'];
+      searchArr.push(str);
+    }
+    let startNum = searchQuery['loadStart'];
+    let endNum = searchQuery['loadEnd'];
+    if ((startNum <= endNum) && ((startNum !== 0) || (endNum !== 0))) {
+      let str = 'loadingNum >= ' + startNum +' and loadingNum <=' + endNum;
+      searchArr.push(str) 
+    }
+    for(let i = 0; i < searchArr.length; i++) {
+      if (i == 0) {
+        searchStr = searchStr + searchArr[i];
+      } else {
+        searchStr = searchStr + ' and ' + searchArr[i];
+      }
+    }
+    let baseSearch = "SELECT * FROM internetmanager.appmassage where " + searchStr + ' order by createDate desc';
+    conn.query(baseSearch,(err,results) => {
+      result.totalSize = results.length;
+    })
+    let dataStart = (pageIndex - 1) * pageSize;
+    let partSearch = baseSearch + " limit " + dataStart + ',' + pageSize;
+    conn.query(partSearch,(err,results) => {
+      if (err) {
+        console.log(err);
+        res.json({code:1,msg:'获取数据失败'});
+      } else {
+        result.resultList = results
+        res.json({code:0,result:result});
+      }
+    })
+  
+  }
+  
+  
 })
 
 
@@ -109,27 +175,70 @@ router1.post('/insertAppMsg',(req,res) => {
   // let sqlStr = `INSERT INTO internetmanager.login VALUES ('张旭东','123456')`;
  
   let dataList = req.query.dataList,
-      type = req.query.type
-  if (type === 0) {  //表示单个插入，dataList是个对象
-    dataList = JSON.parse(dataList);
-  } else {   //多个插入
-    for(let i = 0; i < dataList.length; i++) {
-      dataList[i] = JSON.parse(dataList[i]);
-    }
-  }
+      type = Number(req.query.type);
   // console.log(dataList);
-  for(let item of dataList) {
-    // console.log(item);
-    conn.query(`INSERT INTO internetmanager.appmassage SET ?`,item,(err,result) => {
+  if (type === 0) {  //表示单个插入，dataList是个对象
+    console.log('单个插入');
+    dataList = JSON.parse(dataList);
+    conn.query(`INSERT INTO internetmanager.appmassage SET ?`,dataList,(err,result) => {
       if(err) {
         console.log(err);
         res.json({code:1,msg:'数据插入失败'});
         return;
+      } else {
+        res.json({code:0,msg:'数据插入成功'});
+      }
+    })
+  } else {   //多个插入
+    console.log('多个插入')
+    for(let i = 0; i < dataList.length; i++) {
+      dataList[i] = JSON.parse(dataList[i]);
+    }
+    for(let item of dataList) {
+      conn.query(`INSERT INTO internetmanager.appmassage SET ?`,item,(err,result) => {
+        if(err) {
+          console.log(err);
+          res.json({code:1,msg:'数据插入失败'});
+          return;
+        } 
+      })
+    }
+    res.json({code:0,msg:'成功插入' + dataList.length + '个数据'});
+  }
+})
+
+
+//app/小程序--修改数据
+router1.post('/updateAppMsg',(req,res) => {
+  let queryData = JSON.parse(req.query.updateData),
+      id = Number(req.query.massId);
+  let sqlStr = "UPDATE internetmanager.appmassage SET ? WHERE (id = '" + id + "')";
+  console.log(queryData);
+  console.log('---------------------');
+  console.log(sqlStr);
+  conn.query(sqlStr,queryData,(err,result) => {
+    if(err) {
+      res.json({code:1,msg:'修改数据失败'});
+    } else {
+      res.json({code:0,msg:'修改数据成功'});
+    }
+  })
+})
+
+//app/小程序---删除数据
+router1.post('/delApprMsg',(req,res) => {
+  let massIdArr = req.query.massIds;
+  console.log(massIdArr)
+  for(let item of massIdArr) {
+    conn.query('DELETE FROM internetmanager.appmassage WHERE id=?',item,(err,result) => {
+      if(err) {
+        console.log(err);
+        res.json({code:1,msg:'删除数据失败'});
+        return;
       } 
     })
   }
-  res.json({code:0,msg:'成功插入' + dataList.length + '个数据'});
-  
+  res.json({code:0,msg:'删除数据成功'});
 })
 
 
@@ -208,8 +317,11 @@ router1.post('/delUserMsg',(req,res) => {
 
 //修改数据
 //UPDATE internetmanager.login SET password = 333333 WHERE (username = '张旭东');
-router1.post('/updateUserMsg',(req,res) => {
-  conn.query(`UPDATE internetmanager.login SET password = 333333 WHERE (username = '周大福')`,(err,result) => {
+router1.get('/updateUserMsg',(req,res) => {
+  let queryData = {
+    password:'123222',
+  }
+  conn.query(`UPDATE internetmanager.login SET ? WHERE (username = '周大福')`,queryData,(err,result) => {
     if(err) {
       res.json({code:1,msg:'修改数据失败'});
     } else {
