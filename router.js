@@ -10,6 +10,7 @@ const fs = require('fs')
 
 
 const {createExcel} = require('./datacreate/appexcel.js');
+const { json } = require('body-parser');
 
 //查询数据
 router1.get('/getUserMsg',(req,res) => {
@@ -25,6 +26,123 @@ router1.get('/getUserMsg',(req,res) => {
     }
   })
 })
+
+//查询数据
+router1.get('/getApplyList',(req,res) => {
+  let sqlStr = `SELECT * FROM internetmanager.applylist order by applyDate desc`;
+  conn.query(sqlStr,(err,results) => {
+    if (err) {
+      console.log(err);
+      res.json({code:1,msg:'获取数据失败'});
+    } else {
+      // console.log(results);
+      res.json({code:0,result:results});
+    }
+  })
+})
+
+
+//获取用户注册管理员申请结果记录
+router1.get('/getApplyResultMass',(req,res) => {
+  let sqlStr = `SELECT * FROM internetmanager.allapplylist order by applyDate desc`;
+  conn.query(sqlStr,(err,results) => {
+    if (err) {
+      console.log(err);
+      res.json({code:1,msg:'获取数据失败'});
+    } else {
+      console.log(results);
+      res.json({code:0,result:results});
+    }
+  })
+})
+
+
+//添加用户注册管理员申请结果记录
+router1.post('/addApplyResultMass',(req,res) => {
+  // console.log(req.query)
+  conn.query(`INSERT INTO internetmanager.allapplylist SET ?`,req.query,(err,result) => {
+    if(err) {
+      console.log(err);
+      res.json({code:0,msg:'插入数据失败'});
+    } else {
+      res.json({code:1,msg:'插入数据成功'});
+    }
+  })
+})
+
+
+//修改下拉框选项数据--状态/级别/属地/类型
+/**
+ *  useTable:"alllevels",
+    updateArr:[
+      {
+        id: 1,
+        newVal: 'hhhh'
+      }
+    ],
+    dataValName:levelVal,
+ * 
+ */
+router1.post('/updateSelectMass',(req,res) => {
+  let useTable = req.query.useTable,
+      updateArr = req.query.updateArr,
+      dataValName = req.query.dataValName;
+  console.log(updateArr);
+  for(let i = 0; i < updateArr.length; i++) {
+    updateArr[i] = JSON.parse(updateArr[i]);
+  }
+  let baseStr = "UPDATE internetmanager." + useTable;
+  for(let item of updateArr) {
+    let sqlStr = baseStr + " SET ? WHERE (id = '" + item.id + "')";
+    let queryData = {};
+    queryData[dataValName] = item[dataValName];
+    conn.query(sqlStr,queryData,(err,result) => {
+      if(err) {
+        console.log(err);
+        res.json({code:0,msg:'修改数据失败'});
+        return ;
+      }
+    })
+  }
+  res.json({code:1,msg:'修改数据成功'});
+})
+
+
+//添加下拉框选项数据--状态/级别/属地/类型
+/**
+ * useTable:"alllevels",
+   addArr:[
+     {
+       levelId:1,
+       levelVal:'hhh'
+     }
+   ],
+ * 
+ */
+router1.post('/addSelectMass',(req,res) => {
+  let useTable = req.query.useTable,
+      addArr = req.query.addArr;
+  for(let i = 0; i < addArr.length; i++) {
+    addArr[i] = JSON.parse(addArr[i]);
+  }
+  console.log(addArr);
+  let baseStr = `INSERT INTO internetmanager.` + useTable;
+  for(let item of addArr) {
+    let sqlStr = baseStr + ` SET ?`;
+    conn.query(sqlStr,item,(err,result) => {
+      if(err) {
+        console.log(err);
+        res.json({code:0,msg:'添加数据失败'});
+        return;
+      }
+    })
+  }
+  res.json({code:1,msg:'添加数据成功'});
+})
+
+
+
+
 
 //获取下拉选择-类型-的所有选项
 router1.get('/getAllTypesMsg',(req,res) => {
@@ -304,6 +422,22 @@ router1.get('/insertUserMsg',(req,res) => {
   })
 })
 
+
+
+//删除某个已经处理的待审核数据
+router1.post('/deleteApplyMass',(req,res) => {
+  let sqlStr = 'DELETE FROM internetmanager.applylist WHERE id=' + req.query.id;
+  console.log(sqlStr)
+  conn.query(sqlStr,(err,result) => {
+    if(err) {
+      console.log(err);
+      res.json({code:0,msg:'删除数据失败'});
+    } else {
+      res.json({code:1,msg:'删除数据成功'});
+    }
+  })
+})
+
 //删除数据
 router1.post('/delUserMsg',(req,res) => {
   conn.query('DELETE FROM internetmanager.login WHERE username=?',req.query.username,(err,result) => {
@@ -314,6 +448,9 @@ router1.post('/delUserMsg',(req,res) => {
     }
   })
 })
+
+
+
 
 //修改数据
 //UPDATE internetmanager.login SET password = 333333 WHERE (username = '张旭东');
@@ -329,5 +466,70 @@ router1.get('/updateUserMsg',(req,res) => {
     }
   })
 })
+
+
+
+//验证登录信息
+//SELECT * FROM internetmanager.logintable WhERE username='周希' and password='123456';
+router1.post('/checkUserLogin',(req,res) => {
+  let sqlStr = `SELECT * FROM internetmanager.logintable WHERE username='` + req.query.username + "' and password='" + req.query.password + "'";
+  conn.query(sqlStr,(err,results) => {
+    if (err) {
+      console.log(err);
+      res.json({code:0,msg:'获取数据失败'});
+    } else {
+      // console.log(results);
+      if (results.length === 0) {
+        res.json({code:0,msg:'获取数据失败,用户名或密码有误'});
+      } else {
+        res.json({code:1,result:results});
+      }
+    }
+  })
+})
+
+
+//添加登录信息
+router1.post('/addUserLogin',(req,res) => {
+  // console.log(req.query)
+  conn.query(`INSERT INTO internetmanager.logintable SET ?`,req.query,(err,result) => {
+    if(err) {
+      console.log(err);
+      res.json({code:0,msg:'插入数据失败'});
+    } else {
+      res.json({code:1,msg:'插入数据成功'});
+    }
+  })
+})
+
+
+//注销用户信息
+router1.post('/cancelUserMass',(req,res) => {
+  // console.log(req.query)
+  conn.query('DELETE FROM internetmanager.logintable WHERE ?',req.query,(err,result) => {
+    if(err) {
+      console.log(err);
+      res.json({code:0,msg:'删除数据失败'});
+    } else {
+      res.json({code:1,msg:'删除数据成功'});
+    }
+  })
+})
+
+//添加管理员申请信息
+router1.post('/addApplyMass',(req,res) => {
+  console.log(req.query);
+  conn.query(`INSERT INTO internetmanager.applylist SET ?`,req.query,(err,result) => {
+    if(err) {
+      console.log(err);
+      res.json({code:0,msg:'插入数据失败'});
+    } else {
+      res.json({code:1,msg:'插入数据成功'});
+    }
+  })
+})
+
+
+
 
 module.exports = router1;
