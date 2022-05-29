@@ -258,6 +258,7 @@ router1.get('/getAppData',(req,res) => {
     let sqlStr1 = "SELECT * FROM internetmanager.appmassage order by createDate desc";
     conn.query(sqlStr1,(err,results) => {
       result.totalSize = results.length;
+      result.totalList = results;
     })
     let dataStart = (pageIndex - 1) * pageSize;
     let sqlStr2 = "SELECT * FROM internetmanager.appmassage order by createDate desc limit " + dataStart + ',' + pageSize;
@@ -295,6 +296,10 @@ router1.get('/getAppData',(req,res) => {
     }
     if (searchQuery['type'] !== "") {
       let str = "type=" + searchQuery['type'];
+      searchArr.push(str);
+    }
+    if (searchQuery['location'] !== "") {
+      let str = "location=" + searchQuery['location'];
       searchArr.push(str);
     }
     let startNum = searchQuery['loadStart'];
@@ -347,6 +352,7 @@ router1.get('/getBlogData',(req,res) => {
     let sqlStr1 = "SELECT * FROM internetmanager.blogmassage order by createDate desc";
     conn.query(sqlStr1,(err,results) => {
       result.totalSize = results.length;
+      result.totalList = results;
     })
     let dataStart = (pageIndex - 1) * pageSize;
     let sqlStr2 = "SELECT * FROM internetmanager.blogmassage order by createDate desc limit " + dataStart + ',' + pageSize;
@@ -425,6 +431,7 @@ router1.get('/getWechatData',(req,res) => {
     let sqlStr1 = "SELECT * FROM internetmanager.wechatmassage order by createDate desc";
     conn.query(sqlStr1,(err,results) => {
       result.totalSize = results.length;
+      result.totalList = results;
     })
     let dataStart = (pageIndex - 1) * pageSize;
     let sqlStr2 = "SELECT * FROM internetmanager.wechatmassage order by createDate desc limit " + dataStart + ',' + pageSize;
@@ -501,6 +508,7 @@ router1.get('/getPcData',(req,res) => {
     let sqlStr1 = "SELECT * FROM internetmanager.pcmassage order by createDate desc";
     conn.query(sqlStr1,(err,results) => {
       result.totalSize = results.length;
+      result.totalList = results;
     })
     let dataStart = (pageIndex - 1) * pageSize;
     let sqlStr2 = "SELECT * FROM internetmanager.pcmassage order by createDate desc limit " + dataStart + ',' + pageSize;
@@ -538,6 +546,10 @@ router1.get('/getPcData',(req,res) => {
     }
     if (searchQuery['type'] !== "") {
       let str = "type=" + searchQuery['type'];
+      searchArr.push(str);
+    }
+    if (searchQuery['location'] !== "") {
+      let str = "location=" + searchQuery['location'];
       searchArr.push(str);
     }
     for(let i = 0; i < searchArr.length; i++) {
@@ -732,6 +744,24 @@ router1.post('/updateAppMsg',(req,res) => {
       res.json({code:1,msg:'修改数据失败'});
     } else {
       res.json({code:0,msg:'修改数据成功'});
+    }
+  })
+})
+
+
+//修改用户信息
+router1.post('/updateLoginMass',(req,res) => {
+  let queryData = JSON.parse(req.query.updateData),
+      username = req.query.username;
+  let sqlStr = "UPDATE internetmanager.logintable SET ? WHERE (username = '" + username + "')";
+  // console.log(queryData);
+  // console.log('---------------------');
+  // console.log(sqlStr);
+  conn.query(sqlStr,queryData,(err,result) => {
+    if(err) {
+      res.json({code:0,msg:'修改数据失败'});
+    } else {
+      res.json({code:1,msg:'修改数据成功'});
     }
   })
 })
@@ -1052,6 +1082,7 @@ router1.post('/addApplyMass',(req,res) => {
 router1.post('/sendEmail', function(req, res) {
   let sendMail = req.query.sendEmail;
   let sendContent = req.query.content;
+  let sendTitle = req.query.title;
   // Use Smtp Protocol to send Email
   var transporter = nodemailer.createTransport({
       service: 'qq',
@@ -1069,7 +1100,7 @@ router1.post('/sendEmail', function(req, res) {
   var mailOptions = {
       to: sendMail,
       from: "2770148791@qq.com", // 这里的from和 上面的user 账号一样的
-      subject: '用户对互联网资产管理系统的一些留言', // 标题
+      subject: sendTitle, // 标题
       //text和html两者只支持一种
       text: sendContent, // 标题
       // html: '<b>Hello world ?</b>' // html 内容
